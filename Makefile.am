@@ -27,7 +27,6 @@ EXTRA_DIST = \
 	configure \
 	Makefile.in \
 	ebin \
-	contrib \
 	include \
 	LICENSE \
 	misc \
@@ -36,8 +35,7 @@ EXTRA_DIST = \
 	src \
 	success_message \
 	tests \
-	VERSION \
-	priv
+	VERSION
 
 all compile :
 	rake contrib
@@ -55,7 +53,10 @@ clean-local :
 	rake clean
 
 # Download everything and put it in the tarball, so build server doesn't download anything
-dist-hook : $(CONTRIB_DEP_DIRS) $(WWW_CONTRIB_DEP_DIRS);
+# EXTRA_DIST gets processed before dist-hook so include dirs here
+dist-hook : $(CONTRIB_DEP_DIRS) $(WWW_CONTRIB_DEP_DIRS)
+	cp -rp $(srcdir)/contrib $(srcdir)/priv $(distdir)
+	rm -rf `find $(distdir)/contrib $(distdir)/priv -name .git`
 
 $(CONTRIB_DEP_DIRS) $(WWW_CONTRIB_DEP_DIRS) :
 	cd $(srcdir); \
