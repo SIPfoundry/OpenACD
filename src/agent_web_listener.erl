@@ -359,22 +359,47 @@ loop(Req, Table) ->
 	%?DEBUG("parsed posts:  ~p", [Post]),
 	case parse_path(Path) of
 		{file, {File, Docroot}} ->
-			Cookielist = Req:parse_cookie(),
 			%?DEBUG("Cookielist:  ~p", [Cookielist]),
-			case proplists:get_value("cpx_id", Cookielist) of
+			Cookie = case proplists:get_value("cookie", Post) of
+				undefined ->
+					CookieList = Req:parse_cookie(),
+					proplists:get_value("cpx_id", CookieList);
+				Val ->
+					"#Ref<" ++ Val ++ ">"
+			end,
+
+			case Cookie of
 				undefined ->
 					Reflist = erlang:ref_to_list(make_ref()),
-					Cookie = make_cookie(Reflist),
+					Cookiez = make_cookie(Reflist),
 					ets:insert(Table, {Reflist, undefined, undefined}),
 					Language = io_lib:format("cpx_lang=~s; path=/", [determine_language(Req:get_header_value("Accept-Language"))]),
 					?DEBUG("Setting cookie and serving file ~p", [string:concat(Docroot, File)]),
-					Req:serve_file(File, Docroot, [{"Set-Cookie", Cookie}, {"Set-Cookie", Language}]);
+					Req:serve_file(File, Docroot, [{"Set-Cookie", Cookiez}, {"Set-Cookie", Language}]);
 				_Reflist ->
 					Language = io_lib:format("cpx_lang=~s; path=/", [determine_language(Req:get_header_value("Accept-Language"))]),
 					Req:serve_file(File, Docroot, [{"Set-Cookie", Language}])
 			end;
 		{api, Api} ->
-			Cookie = cookie_good(Req:parse_cookie()),
+			Reflist = case proplists:get_value("cookie", Post) of
+				undefined ->
+					CookieList = Req:parse_cookie(),
+					proplists:get_value("cpx_id", CookieList);
+				Val ->
+					"#Ref<" ++ Val ++ ">"
+			end,
+			Cookie = case Reflist of
+				undefined ->
+					badcookie;
+				_ ->
+					case ets:lookup(web_connections, Reflist) of
+						[] ->
+							badcookie;
+						[{Reflist, Salt, Conn}] ->
+							{Reflist, Salt, Conn}
+					end
+			end,
+
 			keep_alive(Cookie),
 			Out = api(Api, Cookie, Post),
 			Req:respond(Out)
@@ -588,7 +613,8 @@ get_salt(badcookie) ->
 		{pubkey, PubKey},
 		{<<"result">>, {struct, [
 			{salt, list_to_binary(Newsalt)},
-			{pubkey, PubKey}
+			{pubkey, PubKey},
+			{cookie, iolist_to_binary(re:replace(Reflist, "#Ref<(.*)>", "\\1"))}
 		]}}
 	]})};
 get_salt({Reflist, _Salt, Conn}) ->
