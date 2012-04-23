@@ -2071,7 +2071,8 @@ api({modules, Node, "freeswitch_media_manager", "update"}, ?COOKIE, Post) ->
 	Atomnode = list_to_existing_atom(Node),
 	case proplists:get_value("enabled", Post) of
 		undefined ->
-			rpc:call(Atomnode, cpx_supervisor, destroy, [freeswitch_media_manager], 2000),
+			rpc:call(Atomnode, cpx, unload_plugin, [oacd_freeswitch]),
+			%rpc:call(Atomnode, cpx_supervisor, destroy, [freeswitch_media_manager], 2000),
 			{200, [], mochijson2:encode({struct, [{success, true}]})};
 		_Else ->
 			PostToProp = [
@@ -2091,52 +2092,46 @@ api({modules, Node, "freeswitch_media_manager", "update"}, ?COOKIE, Post) ->
 			end,
 			MidOptions = lists:foldl(Builder, [], PostToProp),
 			Options = [X || {_K, Val} = X <- MidOptions, Val =/= ""],
-			Args = [list_to_atom(proplists:get_value("cnode", Post)), Options],
-			Conf = #cpx_conf{
-				id = freeswitch_media_manager,
-				module_name = freeswitch_media_manager,
-				start_function = start_link,
-				supervisor = mediamanager_sup,
-				start_args = Args},
-			rpc:call(Atomnode, cpx_supervisor, update_conf, [freeswitch_media_manager, Conf], 2000),
+			Args = [{freeswitch_node, list_to_atom(proplists:get_value("cnode", Post))} | Options],
+			Args0 = case proplists:get_value(sipauth,Args) of
+				"sipauth" -> [sipauth | proplists:delete(sipauth,Args)];
+				_ -> proplists:delete(sipauth,Args)
+			end,
+			%Conf = #cpx_conf{ id = freeswitch_media_manager, module_name = freeswitch_media_manager, start_function = start_link, supervisor = mediamanager_sup, start_args = Args},
+			%rpc:call(Atomnode, cpx_supervisor, update_conf, [freeswitch_media_manager, Conf], 2000),
+			rpc:call(Atomnode, cpx, set_plugin_env, [oacd_freeswitch, Args0]),
+			rpc:call(Atomnode, cpx, reload_plugin, [oacd_freeswitch]),
+			rpc:call(Atomnode, application, start, [oacd_freeswitch]),
 			{200, [], mochijson2:encode({struct, [{success, true}]})}
 	end;
 api({modules, Node, "freeswitch_media_manager", "get"}, ?COOKIE, _Post) ->
 	Anode = list_to_existing_atom(Node),
-	case rpc:call(Anode, cpx_supervisor, get_conf, [freeswitch_media_manager]) of
-		undefined ->
-			Json = {struct, [
-				{success, true},
-				{<<"enabled">>, false}
-			]},
-			{200, [], mochijson2:encode(Json)};
-		Rec when is_record(Rec, cpx_conf) ->
-			[Cnode, Args] = Rec#cpx_conf.start_args,
-			%?DEBUG("Args: ~p", [Args]),
-			BaseStruct = [
-				{success, true},
-				{<<"enabled">>, true},
-				{<<"cnode">>, list_to_binary(atom_to_list(Cnode))}
-			],
-			PropToPost = [
-				{dialstring, <<"dialstring">>},
-				{sip, <<"sipEndpoint">>},
-				{iax2, <<"iax2Endpoint">>},
-				{h323, <<"h323Endpoint">>},
-				{sipauth, <<"sipauth">>}
-			],
-			Builder = fun({Key, Newkey}, Acc) ->
-				case proplists:get_value(Key, Args) of
-					undefined ->
-						Acc;
-					Else ->
-						[{Newkey, list_to_binary(Else)} | Acc]
-				end
-			end,
-			Fullstruct = lists:foldl(Builder, BaseStruct, PropToPost),
-			Json = {struct, Fullstruct},
-			{200, [], mochijson2:encode(Json)}
-	end;
+	Settings = rpc:call(Anode, application, get_all_env, [oacd_freeswitch]),
+	Running = rpc:call(Anode, cpx, plugin_status, [oacd_freeswitch]),
+	PropToPost = [
+		{dialstring, <<"dialstring">>},
+		{sip, <<"sipEndpoint">>},
+		{iax2, <<"iax2Endpoint">>},
+		{h323, <<"h323Endpoint">>},
+		{sipauth, <<"sipauth">>},
+		{freeswitch_node, <<"cnode">>}
+	],
+	Builder = fun({Key,Newkey},Acc) ->
+		case proplists:get_value(Key,Settings) of
+			undefined -> Acc;
+			Else when is_list(Else) -> [{Newkey, list_to_binary(Else)} | Acc];
+			Else when Key =:= sipauth, Else =:= true -> [{sipauth,<<"sipauth">>}|Acc];
+			Else -> Acc
+		end
+	end,
+	Props0 = lists:foldl(Builder,[],PropToPost),
+	Enabled = case Running of
+		running -> true;
+		_ -> false
+	end,
+	Props1 = [{success,true},{enabled,Enabled}|Props0],
+	Json = {struct, Props1},
+	{200,[],mochijson2:encode(Json)};
 	
 api({modules, Node, "email_media_manager", "update"}, ?COOKIE, Post) ->
 	Atomnode = list_to_existing_atom(Node),
@@ -2347,17 +2342,26 @@ api({clients, "getDefault"}, ?COOKIE, _Post) ->
 	Json = encode_client(Client),
 	{200, [], mochijson2:encode(Json)};
 api({clients, "setDefault"}, ?COOKIE, Post) ->
-	Baseoptions = try list_to_integer(proplists:get_value("autoend_wrapup", Post)) of
+	Opts0 = try list_to_integer(proplists:get_value("autowrapup", Post)) of
 		I ->
 			[{autoend_wrapup, I}]
 	catch
 		error:badarg ->
 			[] 
 	end,
+	Opts1 = case proplists:get_value("url_pop", Post, "") of
+		"" -> Opts0;
+		Url -> [{url_pop, Url} | Opts0]
+	end,
+	Opts2 = try list_to_integer(proplists:get_value("ringout", Post, "60")) of
+		I2 -> [{"ringout",I2}|Opts1]
+	catch
+		error:badarg -> Opts1
+	end,
 	Client = #client{
 		label = undefined,
 		id = undefined,
-		options = [{url_pop, proplists:get_value("url_pop", Post, "")} | Baseoptions]
+		options = Opts2
 	},
 	call_queue_config:set_client(undefined, Client),
 	{200, [], mochijson2:encode({struct, [{success, true}]})};
