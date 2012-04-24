@@ -1,0 +1,94 @@
+#!/bin/bash
+
+OUTDIR=~/playground
+BASEDIR=/home/jvliwanag/workspace/OpenACD
+REBAR="$BASEDIR"/rebar
+
+BINDIR="$OUTDIR"/bin
+ETCDIR="$OUTDIR"/etc
+LIBDIR="$OUTDIR"/lib
+VARDIR="$OUTDIR"/var
+
+OADIR="$LIBDIR"/openacd
+
+OALIBDIR="$OADIR"/lib
+OABINDIR="$OADIR"/bin
+OACONFIGDIR="$ETCDIR"/openacd
+OAVARDIR="$VARDIR"/lib/openacd
+OALOGDIR="$VARDIR"/log/openacd
+OADBDIR="$OAVARDIR"/db
+OAPLUGINDIR="$OADIR"/plugin.d
+
+mkdir -p "$BINDIR"
+mkdir -p "$ETCDIR"
+mkdir -p "$LIBDIR"
+mkdir -p "$VARDIR"
+
+# Reset
+rm -Rf "$OADIR"
+mkdir -p "$OADIR"
+
+mkdir -p "$OALIBDIR"
+mkdir -p "$OABINDIR"
+mkdir -p "$OACONFIGDIR"
+mkdir -p "$OAVARDIR"
+mkdir -p "$OAPLUGINDIR"
+
+# Compile
+cd "$BASEDIR"
+#$BASEDIR/rebar compile
+
+### Libraries
+
+function add_to_lib {
+	dep="$1"
+	
+	depname=$( basename $dep )
+
+	outdepdir="$OALIBDIR"/"$depname"
+
+	# TODO clean up
+	rm -f "$outdepdir/*"
+	mkdir "$outdepdir"
+
+	ebindir="$dep/ebin"
+	includedir="$dep/include"
+	privdir="$dep/priv"
+
+	[ -d "$ebindir" ] && cp -Rf "$ebindir" "$outdepdir/ebin"
+	[ -d "$includedir" ] && cp -Rf "$includedir" "$outdepdir/include"
+	[ -d "$privdir" ] && cp -Rf "$dep/priv" "$outdepdir/priv"
+
+}
+
+# Add self to lib
+add_to_lib "$BASEDIR"
+
+# Copy deps to lib
+for dep in "$BASEDIR"/**/deps/*; do
+	add_to_lib "$dep"
+done
+
+# Include apps to lib
+for app in "$BASEDIR"/include_apps/*; do
+	add_to_lib "$app"
+done
+
+## Plug-ins
+mkdir -p "$OAPLUGINDIR"
+
+## Configurations
+cp "$BASEDIR"/config/app.config "$OACONFIGDIR"
+cp "$BASEDIR"/config/vm.args "$OACONFIGDIR"
+
+## Var dirs
+mkdir -p "$OADBDIR"
+mkdir -p "$OALOGDIR"
+
+## Bin
+cp "$BASEDIR"/scripts/openacd "$OABINDIR"
+cp "$BASEDIR"/scripts/nodetool "$OABINDIR"
+ln -s "$OABINDIR"/openacd "$BINDIR"/openacd
+ln -s "$OABINDIR"/nodetool "$BINDIR"/nodetool
+
+
