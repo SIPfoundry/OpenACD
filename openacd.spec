@@ -27,7 +27,7 @@ OpenACD is a skills-based, Call Center software based on FreeSWITCH and built in
 make compile
 
 %install
-make install PREFIX=$RPM_BUILD_ROOT/opt/OpenACD
+make install DESTDIR=$RPM_BUILD_ROOT
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -37,18 +37,21 @@ rm -rf $RPM_BUILD_ROOT
 %post
 
 %files
-%dir /opt/OpenACD
-%dir /opt/OpenACD/bin
-%attr (755,root,root) /opt/OpenACD/bin/openacd
-/opt/OpenACD/erts-*
-/opt/OpenACD/etc
-/opt/OpenACD/lib
-/opt/OpenACD/log
-/opt/OpenACD/releases
-/opt/OpenACD/run
-/opt/OpenACD/plugin.d/deps
+%defattr(-,root,root,-)
+%dir /%_lib/openacd
+%dir /var/lib/openacd
+%dir /var/log/openacd
+%dir /etc/openacd
+/%_lib/openacd/*
+/var/lib/openacd/*
+/etc/openacd/*
+/bin/openacd
+/bin/nodetool
+
 
 %changelog
+* Thu Apr 25 2012 Cristi Starasciuc <cristi@ezuce.com>
+- New packaging closer to erlang standards
 * Fri Jun 24 2011 Micah Warren <micahw@lordnull.com>
 - Updated provider, url, and removed no longer needed enviroment variables.
 * Thu Jan 27 2011 Douglas Hubler <douglas@hubler.us>
