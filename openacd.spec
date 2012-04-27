@@ -16,6 +16,7 @@ BuildRequires: erlang
 Requires: erlang
 
 BuildRoot: %{_builddir}/%{name}-root
+Prefix: /
 
 %description
 OpenACD is a skills-based, Call Center software based on FreeSWITCH and built in erlang.
@@ -27,7 +28,7 @@ OpenACD is a skills-based, Call Center software based on FreeSWITCH and built in
 make compile
 
 %install
-make install DESTDIR=$RPM_BUILD_ROOT
+make install PREFIX=$RPM_BUILD_ROOT
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -38,15 +39,15 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-%dir /%_lib/openacd
-%dir /var/lib/openacd
-%dir /var/log/openacd
-%dir /etc/openacd
-/%_lib/openacd/*
-/var/lib/openacd/*
-/etc/openacd/*
-/bin/openacd
-/bin/nodetool
+%dir %{prefix}/%{_lib}/openacd
+%dir %{prefix}/var/lib/openacd
+%dir %{prefix}/var/log/openacd
+%dir %{prefix}/etc/openacd
+%{prefix}/%_lib/openacd/*
+%{prefix}/var/lib/openacd/*
+%{prefix}/etc/openacd/*
+%{prefix}/bin/openacd
+%{prefix}/bin/nodetool
 
 
 %changelog
