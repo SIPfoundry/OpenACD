@@ -3,12 +3,11 @@
 ERL="erl"
 RUN_ERL="run_erl"
 
-# TODO Replace with proper rootdir
-ROOTDIR="/home/jvliwanag/playground"
+ROOTDIR=%OPENACD_PREFIX%
 
 BINDIR="$ROOTDIR"/bin
 ETCDIR="$ROOTDIR"/etc
-LIBDIR="$ROOTDIR"/lib
+LIBDIR="$ROOTDIR"/%LIB_DIR%
 VARDIR="$ROOTDIR"/var
 
 OADIR="$LIBDIR"/openacd

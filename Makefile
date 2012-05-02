@@ -69,39 +69,43 @@ run: compile
 	./rel/openacd/bin/openacd console
 
 install: compile
-	mkdir -p $(PREFIX)$(BINDIR)
-	mkdir -p $(PREFIX)$(OADIR)
-	mkdir -p $(PREFIX)$(OALIBDIR)
-	mkdir -p $(PREFIX)$(OABINDIR)
-	mkdir -p $(PREFIX)$(OACONFIGDIR)
-	mkdir -p $(PREFIX)$(OAVARDIR)
-	mkdir -p $(PREFIX)$(OAPLUGINDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(BINDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(OADIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(OALIBDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(OABINDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(OACONFIGDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(OAVARDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(OAPLUGINDIR)
 	for dep in deps/*; do \
-	  ./install.sh $$dep $(PREFIX)$(OALIBDIR) ; \
+	  ./install.sh $$dep $(DESTDIR)$(PREFIX)$(OALIBDIR) ; \
 	done
-	./install.sh ../OpenACD $(PREFIX)$(OALIBDIR)
+	./install.sh ../OpenACD $(DESTDIR)$(PREFIX)$(OALIBDIR)
 	for app in ./include_apps/*; do \
-	  ./install.sh $$app $(PREFIX)$(OALIBDIR) ; \
+	  ./install.sh $$app $(DESTDIR)$(PREFIX)$(OALIBDIR) ; \
 	done
 ## Plug-ins
-	mkdir -p $(PREFIX)$(OAPLUGINDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(OAPLUGINDIR)
 ## Configurations
 	sed \
 	-e 's|%LOG_DIR%|$(OALOGDIR)|g' \
 	-e 's|%PLUGIN_DIR%|$(OAPLUGINDIR)|g' \
-	./config/app.config > $(PREFIX)$(OACONFIGDIR)/app.config
+	./config/app.config > $(DESTDIR)$(PREFIX)$(OACONFIGDIR)/app.config
 	sed \
 	-e 's|%DB_DIR%|$(OADBDIR)|g' \
-	./config/vm.args > $(PREFIX)$(OACONFIGDIR)/vm.args
+	./config/vm.args > $(DESTDIR)$(PREFIX)$(OACONFIGDIR)/vm.args
 ## Var dirs
-	mkdir -p $(PREFIX)$(OADBDIR)
-	mkdir -p $(PREFIX)$(OALOGDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(OADBDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)$(OALOGDIR)
 ## Bin
-	cp ./scripts/openacd $(PREFIX)$(OABINDIR)
-	cp ./scripts/nodetool $(PREFIX)$(OABINDIR)
-	cd $(PREFIX)$(BINDIR); \
-	ln -sf ..$(OABINDIR)/openacd openacd; \
-	ln -sf ..$(OABINDIR)/nodetool nodetool
+#dont use DESTDIR in sed here;this is a hack to not get "rpmbuild found in installed files"
+	sed \
+	-e 's|%OPENACD_PREFIX%|"$(PREFIX)"|g' \
+	-e 's|%LIB_DIR%|$(libdir)|g' \
+	./scripts/openacd > $(DESTDIR)$(PREFIX)$(OABINDIR)/openacd
+	cp ./scripts/nodetool $(DESTDIR)$(PREFIX)$(OABINDIR)
+	cd $(DESTDIR)$(PREFIX)$(BINDIR); \
+	ln -sf $(PREFIX)$(OABINDIR)/openacd openacd; \
+	ln -sf $(PREFIX)$(OABINDIR)/nodetool nodetool
 
 dist: deps
 	./hooks.sh pre_compile

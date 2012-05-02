@@ -28,7 +28,7 @@ OpenACD is a skills-based, Call Center software based on FreeSWITCH and built in
 make compile
 
 %install
-make install PREFIX=$RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT PREFIX=%{prefix}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
