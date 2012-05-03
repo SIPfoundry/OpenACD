@@ -52,7 +52,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 * Thu Apr 25 2012 Cristi Starasciuc <cristi@ezuce.com>
-- New packaging closer to erlang standards
+- New packaging
 * Fri Jun 24 2011 Micah Warren <micahw@lordnull.com>
 - Updated provider, url, and removed no longer needed enviroment variables.
 * Thu Jan 27 2011 Douglas Hubler <douglas@hubler.us>

@@ -102,6 +102,7 @@ install: compile
 	-e 's|%OPENACD_PREFIX%|"$(PREFIX)"|g' \
 	-e 's|%LIB_DIR%|$(libdir)|g' \
 	./scripts/openacd > $(DESTDIR)$(PREFIX)$(OABINDIR)/openacd
+	chmod +x $(DESTDIR)$(PREFIX)$(OABINDIR)/openacd
 	cp ./scripts/nodetool $(DESTDIR)$(PREFIX)$(OABINDIR)
 	cd $(DESTDIR)$(PREFIX)$(BINDIR); \
 	ln -sf $(PREFIX)$(OABINDIR)/openacd openacd; \
