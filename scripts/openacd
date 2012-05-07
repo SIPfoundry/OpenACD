@@ -25,9 +25,6 @@ PIPE_DIR=/tmp/openacd
 export OPENACD_LOG_DIR="$OALOGDIR"
 export OPENACD_ETC_DIR="$OAETCDIR"
 
-# Add plug-in dir to path
-export ERL_LIBS=$ERL_LIBS:"$OALIBDIR":"$OAPLUGINDIR"
-
 # Erlang crash dump
 export ERL_CRASH_DUMP="$OALOGDIR/log/erlang_crash.dump"
 
@@ -35,6 +32,12 @@ export ERL_CRASH_DUMP="$OALOGDIR/log/erlang_crash.dump"
 if [ ! -z "$RUNNER_USER" ] && [ `whoami` != "$RUNNER_USER" ]; then
     exec sudo -u $RUNNER_USER -i $0 $@
 fi
+
+# allow overriding vars from above
+[ -e "${OAETCDIR}/sysopenacd" ] && . "${OAETCDIR}/sysopenacd"
+
+# Add plug-in dir to path
+export ERL_LIBS=$ERL_LIBS:"$OALIBDIR":"$OAPLUGINDIR"
 
 # Extract the target node name from node.args
 NAME_ARG=`grep -e '-[s]*name' $OAETCDIR/vm.args`
